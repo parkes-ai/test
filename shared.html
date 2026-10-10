@@ -1,0 +1,387 @@
+<title>우리 집 장보기</title>
+<style>
+  /* 레이아웃: 한 줄 세로 흐름. 머리말 → 추가 칸 → 카테고리 카드 4장 → 새 장보기 */
+  :root {
+    --bg: #eef8f2;
+    --card: #ffffff;
+    --ink: #1f2d25;
+    --muted: #61756a;
+    --green: #2e7d4f;
+    --green-dark: #1d5c37;
+    --green-soft: #e3f4e8;
+    --line: #d3e8da;
+    --on-green: #ffffff;
+    --danger: #b8443b;
+    --danger-soft: #fbeceb;
+    --shadow: rgba(30, 80, 50, .08);
+    --font: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101a14; --card: #18241d; --ink: #e3efe7; --muted: #93a99b;
+      --green: #5fbf85; --green-dark: #8fd9aa; --green-soft: #1f3528; --line: #2a3d31;
+      --on-green: #0d1a12; --danger: #f08a80; --danger-soft: #3a2220; --shadow: rgba(0, 0, 0, .3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101a14; --card: #18241d; --ink: #e3efe7; --muted: #93a99b;
+    --green: #5fbf85; --green-dark: #8fd9aa; --green-soft: #1f3528; --line: #2a3d31;
+    --on-green: #0d1a12; --danger: #f08a80; --danger-soft: #3a2220; --shadow: rgba(0, 0, 0, .3);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+
+  header { display: flex; flex-direction: column; gap: 6px; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 1.8rem; color: var(--green-dark); text-wrap: balance; }
+  .status {
+    font-size: .8rem; padding: 4px 10px; border-radius: 99px;
+    background: var(--green-soft); color: var(--green-dark); white-space: nowrap;
+  }
+  .status.warn { background: var(--danger-soft); color: var(--danger); }
+  .progress-text { color: var(--muted); font-size: .95rem; font-variant-numeric: tabular-nums; }
+  .progress-text b { color: var(--green); }
+  .bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--green); border-radius: 99px; transition: width .3s; }
+
+  form.add {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    background: var(--card); padding: 12px; border-radius: 16px;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  form.add input, form.add select, form.add button {
+    font: inherit; border-radius: 10px; border: 1px solid var(--line);
+    padding: 12px; min-height: 48px; color: var(--ink); background: var(--card);
+  }
+  form.add input { flex: 1 1 180px; min-width: 0; }
+  form.add select { flex: 1 1 auto; }
+  form.add button {
+    background: var(--green); color: var(--on-green); border: none; font-weight: 700;
+    cursor: pointer; padding: 12px 20px;
+  }
+  form.add button:hover { background: var(--green-dark); }
+  form.add[hidden] { display: none !important; }
+
+  .notice { color: var(--muted); font-size: .9rem; padding: 0 4px; }
+  .notice.err { color: var(--danger); }
+
+  section.cat {
+    background: var(--card); border-radius: 16px; padding: 14px 16px 10px;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  section.cat h2 {
+    margin: 0 0 6px; font-size: 1.1rem; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  section.cat h2 .count { font-size: .85rem; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+  #list { display: flex; flex-direction: column; gap: 14px; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 4px 4px 8px; border-radius: 10px; min-height: 48px;
+    transition: background .2s;
+  }
+  li.done { background: var(--green-soft); }
+  li label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 6px 0; }
+  li input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
+  li input[type=checkbox]:disabled { cursor: default; }
+  li .name { overflow-wrap: anywhere; }
+  li.done .name { text-decoration: line-through; color: var(--muted); }
+  li button.del {
+    border: none; background: none; color: var(--muted); font-size: 1.1rem;
+    cursor: pointer; width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
+  }
+  li button.del:hover { color: var(--danger); background: var(--danger-soft); }
+  .empty { color: var(--muted); font-size: .9rem; padding: 6px 8px 10px; }
+
+  .reset-area { display: flex; flex-direction: column; gap: 8px; }
+  .reset {
+    width: 100%; padding: 14px; min-height: 52px;
+    font: inherit; font-weight: 700; color: var(--green-dark);
+    background: var(--card); border: 2px dashed var(--green);
+    border-radius: 16px; cursor: pointer;
+  }
+  .reset:hover { background: var(--green-soft); }
+  .confirm {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+    background: var(--card); border-radius: 16px; padding: 14px; box-shadow: 0 2px 8px var(--shadow);
+  }
+  .confirm p { margin: 0; flex: 1 1 100%; text-align: center; }
+  .confirm button {
+    font: inherit; font-weight: 700; padding: 10px 20px; min-height: 44px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  }
+  .confirm button.yes { background: var(--green); color: var(--on-green); border: none; }
+
+  button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 3px solid var(--green); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="top">
+      <h1>🥬 우리 집 장보기</h1>
+      <span class="status" id="status">연결하는 중…</span>
+    </div>
+    <div class="progress-text" id="progressText">목록을 불러오는 중이에요.</div>
+    <div class="bar"><div id="barFill"></div></div>
+  </header>
+
+  <form class="add" id="addForm" hidden>
+    <input id="newName" type="text" placeholder="사야 할 것 (예: 콩나물)" autocomplete="off" maxlength="40" required>
+    <select id="newCat" aria-label="카테고리"></select>
+    <button type="submit">추가</button>
+  </form>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <main id="list"></main>
+
+  <div class="reset-area" id="resetArea" hidden>
+    <button class="reset" id="resetBtn" type="button">🔄 새 장보기 (체크 모두 해제)</button>
+    <div class="confirm" id="confirmBox" hidden>
+      <p>체크한 것을 모두 해제할까요? 항목은 그대로 남고, 함께 보는 모든 사람의 화면에서 해제돼요.</p>
+      <button class="yes" id="confirmYes" type="button">모두 해제</button>
+      <button id="confirmNo" type="button">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CATEGORIES = [
+    { id: 'veg',   name: '🥕 채소·과일' },
+    { id: 'meat',  name: '🥩 고기·생선' },
+    { id: 'dairy', name: '🥛 유제품·달걀' },
+    { id: 'home',  name: '🧻 생활용품' },
+  ];
+
+  const $ = id => document.getElementById(id);
+  const listEl = $('list');
+  const statusEl = $('status');
+  const noticeEl = $('notice');
+  const addForm = $('addForm');
+  const nameInput = $('newName');
+  const catSelect = $('newCat');
+
+  let db = null;
+  let items = [];        // [{id, name, cat, done, createdAt}]
+  let loaded = false;
+  let canWrite = false;
+
+  for (const cat of CATEGORIES) {
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.textContent = cat.name;
+    catSelect.appendChild(opt);
+  }
+
+  function setStatus(text, warn) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle('warn', !!warn);
+  }
+
+  function showNotice(text, isError) {
+    noticeEl.textContent = text;
+    noticeEl.classList.toggle('err', !!isError);
+    noticeEl.hidden = !text;
+  }
+
+  function setReadOnly() {
+    canWrite = false;
+    addForm.hidden = true;
+    $('resetArea').hidden = true;
+    setStatus('👀 보기만 가능');
+    render();
+  }
+
+  function handleWriteError(e) {
+    const code = e && e.code;
+    if (code === 'invalid_argument') {
+      setReadOnly();
+      showNotice('체크하거나 고칠 권한이 없어요. 목록을 만든 사람에게 편집 권한을 받아 주세요.', true);
+    } else if (code === 'quota_exceeded') {
+      showNotice('저장 공간이 가득 찼어요. 필요 없는 항목을 지운 뒤 다시 추가해 주세요.', true);
+    } else {
+      showNotice('저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', true);
+    }
+  }
+
+  function render() {
+    listEl.innerHTML = '';
+    if (!loaded) return;
+
+    for (const cat of CATEGORIES) {
+      const catItems = items.filter(i => i.cat === cat.id);
+      const doneCount = catItems.filter(i => i.done).length;
+
+      const section = document.createElement('section');
+      section.className = 'cat';
+
+      const h2 = document.createElement('h2');
+      h2.textContent = cat.name;
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = `${doneCount} / ${catItems.length}`;
+      h2.appendChild(count);
+      section.appendChild(h2);
+
+      if (catItems.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = canWrite ? '아직 항목이 없어요. 위 칸에서 추가해 보세요.' : '아직 항목이 없어요.';
+        section.appendChild(empty);
+      }
+
+      const ul = document.createElement('ul');
+      for (const item of catItems) {
+        const li = document.createElement('li');
+        if (item.done) li.classList.add('done');
+
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = 'cb-' + item.id;
+        cb.checked = item.done;
+        cb.disabled = !canWrite;
+        cb.addEventListener('change', () => toggle(item.id, cb.checked));
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = item.name;
+        label.append(cb, name);
+        li.appendChild(label);
+
+        if (canWrite) {
+          const del = document.createElement('button');
+          del.className = 'del';
+          del.type = 'button';
+          del.title = '삭제';
+          del.setAttribute('aria-label', item.name + ' 삭제');
+          del.textContent = '✕';
+          del.addEventListener('click', () => remove(item.id));
+          li.appendChild(del);
+        }
+        ul.appendChild(li);
+      }
+      section.appendChild(ul);
+      listEl.appendChild(section);
+    }
+
+    const total = items.length;
+    const done = items.filter(i => i.done).length;
+    $('progressText').innerHTML = total === 0
+      ? '목록이 비어 있어요.'
+      : `<b>${done}</b> / ${total} 샀어요`;
+    $('barFill').style.width = total ? (done / total * 100) + '%' : '0';
+  }
+
+  async function toggle(id, done) {
+    try {
+      await db.collection('items').doc(id).update({ done });
+    } catch (e) {
+      handleWriteError(e);
+      render();
+    }
+  }
+
+  async function remove(id) {
+    try {
+      await db.collection('items').doc(id).delete();
+    } catch (e) {
+      handleWriteError(e);
+    }
+  }
+
+  addForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = nameInput.value.trim();
+    if (!name || !db) return;
+    nameInput.value = '';
+    nameInput.focus();
+    try {
+      await db.collection('items').add({ name, cat: catSelect.value, done: false, createdAt: Date.now() });
+      showNotice('');
+    } catch (err) {
+      nameInput.value = name;
+      handleWriteError(err);
+    }
+  });
+
+  $('resetBtn').addEventListener('click', () => {
+    if (!items.some(i => i.done)) {
+      showNotice('체크한 항목이 없어요.');
+      return;
+    }
+    showNotice('');
+    $('resetBtn').hidden = true;
+    $('confirmBox').hidden = false;
+  });
+
+  function closeConfirm() {
+    $('confirmBox').hidden = true;
+    $('resetBtn').hidden = false;
+  }
+  $('confirmNo').addEventListener('click', closeConfirm);
+  $('confirmYes').addEventListener('click', async () => {
+    closeConfirm();
+    const doneIds = items.filter(i => i.done).map(i => i.id);
+    for (const id of doneIds) {
+      try {
+        await db.collection('items').doc(id).update({ done: false });
+      } catch (e) {
+        handleWriteError(e);
+        return;
+      }
+    }
+  });
+
+  async function start() {
+    if (!window.claude || !window.claude.use) {
+      setStatus('연결 안 됨', true);
+      showNotice('이 페이지는 claude.ai에서 열어야 목록이 보여요.', true);
+      return;
+    }
+    db = await window.claude.use('db');
+    if (!db) {
+      setStatus('연결 안 됨', true);
+      showNotice('목록을 불러올 수 없어요. claude.ai에 로그인했는지 확인해 주세요.', true);
+      return;
+    }
+
+    const user = await window.claude.use('user');
+    const can = user ? await user.can('data.write') : null;
+    canWrite = can !== false;   // null은 '알 수 없음'이라 일단 허용하고, 거절되면 보기 전용으로 바꿔요
+    if (canWrite) {
+      addForm.hidden = false;
+      $('resetArea').hidden = false;
+      setStatus('🟢 가족과 함께 보는 중');
+    } else {
+      setReadOnly();
+    }
+
+    db.collection('items').onSnapshot(snap => {
+      items = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(i => typeof i.name === 'string' && CATEGORIES.some(c => c.id === i.cat))
+        .map(i => ({ ...i, done: !!i.done }))
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      loaded = true;
+      render();
+    }, err => {
+      setStatus('연결 끊김', true);
+      showNotice('목록과 연결이 끊겼어요. 페이지를 새로고침해 주세요.', true);
+    });
+  }
+
+  start();
+</script>
